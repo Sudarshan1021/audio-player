@@ -1,8 +1,11 @@
 package com.github.florent37.assets_audio_player.notification
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.PendingIntent
+import android.app.PendingIntent.FLAG_IMMUTABLE
+import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -12,22 +15,23 @@ import android.media.MediaMetadata
 import android.os.Build
 import android.os.IBinder
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.support.v4.media.session.PlaybackStateCompat.ACTION_SEEK_TO
+import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationCompat.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.media.session.MediaButtonReceiver
+import androidx.media.session.MediaButtonReceiver.*
+import com.github.florent37.assets_audio_player.AssetsAudioPlayerPlugin
+import com.github.florent37.assets_audio_player.R
 import com.google.android.exoplayer2.C
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import android.app.PendingIntent.FLAG_UPDATE_CURRENT
-import android.app.PendingIntent.FLAG_IMMUTABLE
-import android.support.v4.media.session.MediaSessionCompat
-import androidx.annotation.RequiresApi
-import com.github.florent37.assets_audio_player.AssetsAudioPlayerPlugin
-import com.github.florent37.assets_audio_player.R
+
 
 class NotificationService : Service() {
 
@@ -117,9 +121,10 @@ class NotificationService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.ECLAIR)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        Log.d("NotificationService","Inside the open Notification")
         if (intent.action == Intent.ACTION_MEDIA_BUTTON) {
             MediaButtonsReceiver.getMediaSessionCompat(applicationContext).let {
-                MediaButtonReceiver.handleIntent(it, intent)
+                handleIntent(it, intent)
             }
         }
         when (val notificationAction = intent.getSerializableExtra(EXTRA_NOTIFICATION_ACTION)) {
@@ -134,6 +139,7 @@ class NotificationService : Service() {
     }
 
     private fun createReturnIntent(forAction: String, forPlayer: String, audioMetas: AudioMetas): Intent {
+        Log.d("CustomIntent","Inside Return intent $forAction")
         return Intent(this, NotificationActionReceiver::class.java)
                 .setAction(forAction)
                 .putExtra(EXTRA_PLAYER_ID, forPlayer)
@@ -216,11 +222,12 @@ class NotificationService : Service() {
         }
     }
 
+    @SuppressLint("WrongConstant")
     @RequiresApi(Build.VERSION_CODES.ECLAIR)
     private fun displayNotification(action: NotificationAction.Show, bitmap: Bitmap?) {
         createNotificationChannel()
         val mediaSession = MediaButtonsReceiver.getMediaSessionCompat(applicationContext)
-
+        Log.d("MediaSession",mediaSession.toString());
         val notificationSettings = action.notificationSettings
 
         updateNotifMetaData(
@@ -236,8 +243,9 @@ class NotificationService : Service() {
                 .putExtra(EXTRA_NOTIFICATION_ACTION, action.copyWith(
                         isPlaying = !action.isPlaying
                 ))
+        Log.d("PendingIntent","Inside the Pending Intent")
         val pendingToggleIntent = PendingIntent.getBroadcast(this, 0, toggleIntent, FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
-        MediaButtonReceiver.handleIntent(mediaSession, toggleIntent)
+        handleIntent(mediaSession, toggleIntent)
 
         val context = this
 
@@ -245,18 +253,22 @@ class NotificationService : Service() {
 
         val callback = object: MediaSessionCompat.Callback() {
             override fun onPlay() {
+                Log.d("PlayPauseCallback","Inside PlayPause Action")
                 player.askPlayOrPause()
             }
 
             override fun onPause() {
+                Log.d("PlayPauseCallback","Inside PlayPause Action")
                 player.askPlayOrPause()
             }
 
             override fun onSkipToPrevious() {
+                Log.d("PreviousActionCallback","Inside Previous Action")
                 player.prev()
             }
 
             override fun onSkipToNext() {
+                Log.d("NextCallback","Inside Next Action")
                 player.next()
             }
 
@@ -277,12 +289,14 @@ class NotificationService : Service() {
         }
 
         mediaSession.setCallback(callback)
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        Log.d("MediaSession",mediaSession.toString());
+        Log.d("MediaSessionToken",mediaSession.sessionToken.toString());
+        val notification = Builder(this, CHANNEL_ID)
                 //prev
                 .apply {
                     if (notificationSettings.prevEnabled) {
-                        addAction(getPrevIcon(context, action.notificationSettings.previousIcon), "Previous",
+                        Log.d("PreviousActionService","Inside Previous Action")
+                       addAction(getPrevIcon(context, action.notificationSettings.previousIcon), "Previous",
                                 PendingIntent.getBroadcast(context, 0, createReturnIntent(forAction = NotificationAction.ACTION_PREV, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
                         )
                     }
@@ -290,31 +304,36 @@ class NotificationService : Service() {
                 //play/pause
                 .apply {
                     if (notificationSettings.playPauseEnabled) {
-                        addAction(
+                        Log.d("PlayPauseService","Inside PlayPause Action")
+                       addAction(
                                 if (action.isPlaying) getPauseIcon(context, action.notificationSettings.pauseIcon) else getPlayIcon(context, action.notificationSettings.playIcon),
                                 if (action.isPlaying) "Pause" else "Play",
-                                pendingToggleIntent
+                                pendingToggleIntent,
+                            ///FLAGS for Android 13
                         )
+
                     }
                 }
                 //next
                 .apply {
                     if (notificationSettings.nextEnabled) {
+                        Log.d("NextService","Inside Next Action")
                         addAction(getNextIcon(context, action.notificationSettings.nextIcon), "Next", PendingIntent.getBroadcast(context, 0,
                                 createReturnIntent(forAction = NotificationAction.ACTION_NEXT, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
                         )
                     }
                 }
                 //stop
-                .apply {
-                    if (notificationSettings.stopEnabled) {
-                        addAction(getStopIcon(context, action.notificationSettings.stopIcon), "Stop", PendingIntent.getBroadcast(context, 0,
-                                createReturnIntent(forAction = NotificationAction.ACTION_STOP, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
-                        )
-                    }
-                }
+//                .apply {
+//                    if (notificationSettings.stopEnabled) {
+//                        addAction(getStopIcon(context, action.notificationSettings.stopIcon), "Stop", PendingIntent.getBroadcast(context, 0,
+//                                createReturnIntent(forAction = NotificationAction.ACTION_STOP, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
+//                        )
+//                    }
+//                }
                 .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                        .also {
+                    .also {
+                        Log.d("NumberNotification",notificationSettings.numberEnabled().toString());
                             when (notificationSettings.numberEnabled()) {
                                 1 -> it.setShowActionsInCompactView(0)
                                 2 -> it.setShowActionsInCompactView(0, 1)
@@ -323,12 +342,12 @@ class NotificationService : Service() {
                                 else -> it.setShowActionsInCompactView()
                             }
                         }
-                        .setShowCancelButton(true)
-                        .setMediaSession(mediaSession.sessionToken)
+                    .setMediaSession(mediaSession.sessionToken)
+//                        .setShowCancelButton(true)
                 )
                 .setSmallIcon(getSmallIcon(context))
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setVisibility(VISIBILITY_PUBLIC)
+                .setPriority(PRIORITY_MAX)
                 .setContentTitle(action.audioMetas.title)
                 .setContentText(action.audioMetas.artist)
                 .setOnlyAlertOnce(true)
@@ -337,8 +356,8 @@ class NotificationService : Service() {
                         it.setSubText(action.audioMetas.album)
                     }
                 }
-                .setContentIntent(PendingIntent.getBroadcast(this, 0,
-                        createReturnIntent(forAction = NotificationAction.ACTION_SELECT, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or PendingIntent.FLAG_CANCEL_CURRENT))
+                .setContentIntent(PendingIntent.getActivity(this, 0,
+                    context.packageManager.getLaunchIntentForPackage(context.packageName)!!, FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT))
                 .also {
                     if (bitmap != null) {
                         it.setLargeIcon(bitmap)
