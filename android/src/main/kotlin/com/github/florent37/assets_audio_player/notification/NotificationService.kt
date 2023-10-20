@@ -121,7 +121,7 @@ class NotificationService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.ECLAIR)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        Log.d("NotificationService","Inside the open Notification")
+        // Log.d("NotificationService","Inside the open Notification")
         if (intent.action == Intent.ACTION_MEDIA_BUTTON) {
             MediaButtonsReceiver.getMediaSessionCompat(applicationContext).let {
                 handleIntent(it, intent)
@@ -139,7 +139,7 @@ class NotificationService : Service() {
     }
 
     private fun createReturnIntent(forAction: String, forPlayer: String, audioMetas: AudioMetas): Intent {
-        Log.d("CustomIntent","Inside Return intent $forAction")
+        // Log.d("CustomIntent","Inside Return intent $forAction")
         return Intent(this, NotificationActionReceiver::class.java)
                 .setAction(forAction)
                 .putExtra(EXTRA_PLAYER_ID, forPlayer)
@@ -227,7 +227,7 @@ class NotificationService : Service() {
     private fun displayNotification(action: NotificationAction.Show, bitmap: Bitmap?) {
         createNotificationChannel()
         val mediaSession = MediaButtonsReceiver.getMediaSessionCompat(applicationContext)
-        Log.d("MediaSession",mediaSession.toString());
+        // Log.d("MediaSession",mediaSession.toString());
         val notificationSettings = action.notificationSettings
 
         updateNotifMetaData(
@@ -243,7 +243,7 @@ class NotificationService : Service() {
                 .putExtra(EXTRA_NOTIFICATION_ACTION, action.copyWith(
                         isPlaying = !action.isPlaying
                 ))
-        Log.d("PendingIntent","Inside the Pending Intent")
+        // Log.d("PendingIntent","Inside the Pending Intent")
         val pendingToggleIntent = PendingIntent.getBroadcast(this, 0, toggleIntent, FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
         handleIntent(mediaSession, toggleIntent)
 
@@ -253,22 +253,22 @@ class NotificationService : Service() {
 
         val callback = object: MediaSessionCompat.Callback() {
             override fun onPlay() {
-                Log.d("PlayPauseCallback","Inside PlayPause Action")
+                // Log.d("PlayPauseCallback","Inside PlayPause Action")
                 player.askPlayOrPause()
             }
 
             override fun onPause() {
-                Log.d("PlayPauseCallback","Inside PlayPause Action")
+                // Log.d("PlayPauseCallback","Inside PlayPause Action")
                 player.askPlayOrPause()
             }
 
             override fun onSkipToPrevious() {
-                Log.d("PreviousActionCallback","Inside Previous Action")
+                // Log.d("PreviousActionCallback","Inside Previous Action")
                 player.prev()
             }
 
             override fun onSkipToNext() {
-                Log.d("NextCallback","Inside Next Action")
+                // Log.d("NextCallback","Inside Next Action")
                 player.next()
             }
 
@@ -289,13 +289,13 @@ class NotificationService : Service() {
         }
 
         mediaSession.setCallback(callback)
-        Log.d("MediaSession",mediaSession.toString());
-        Log.d("MediaSessionToken",mediaSession.sessionToken.toString());
+        // Log.d("MediaSession",mediaSession.toString());
+        // Log.d("MediaSessionToken",mediaSession.sessionToken.toString());
         val notification = Builder(this, CHANNEL_ID)
                 //prev
                 .apply {
                     if (notificationSettings.prevEnabled) {
-                        Log.d("PreviousActionService","Inside Previous Action")
+                        // Log.d("PreviousActionService","Inside Previous Action")
                        addAction(getPrevIcon(context, action.notificationSettings.previousIcon), "Previous",
                                 PendingIntent.getBroadcast(context, 0, createReturnIntent(forAction = NotificationAction.ACTION_PREV, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
                         )
@@ -304,7 +304,7 @@ class NotificationService : Service() {
                 //play/pause
                 .apply {
                     if (notificationSettings.playPauseEnabled) {
-                        Log.d("PlayPauseService","Inside PlayPause Action")
+                        // Log.d("PlayPauseService","Inside PlayPause Action")
                        addAction(
                                 if (action.isPlaying) getPauseIcon(context, action.notificationSettings.pauseIcon) else getPlayIcon(context, action.notificationSettings.playIcon),
                                 if (action.isPlaying) "Pause" else "Play",
@@ -317,7 +317,7 @@ class NotificationService : Service() {
                 //next
                 .apply {
                     if (notificationSettings.nextEnabled) {
-                        Log.d("NextService","Inside Next Action")
+                        // Log.d("NextService","Inside Next Action")
                         addAction(getNextIcon(context, action.notificationSettings.nextIcon), "Next", PendingIntent.getBroadcast(context, 0,
                                 createReturnIntent(forAction = NotificationAction.ACTION_NEXT, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
                         )
@@ -333,7 +333,7 @@ class NotificationService : Service() {
 //                }
                 .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                     .also {
-                        Log.d("NumberNotification",notificationSettings.numberEnabled().toString());
+                        // Log.d("NumberNotification",notificationSettings.numberEnabled().toString());
                             when (notificationSettings.numberEnabled()) {
                                 1 -> it.setShowActionsInCompactView(0)
                                 2 -> it.setShowActionsInCompactView(0, 1)
@@ -378,10 +378,10 @@ class NotificationService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                     CHANNEL_ID,
-                    "Foreground Service Channel",
+                    "Playback",
                     android.app.NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "assets_audio_player"
+                // description = "assets_audio_player"
                 setShowBadge(false)
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
