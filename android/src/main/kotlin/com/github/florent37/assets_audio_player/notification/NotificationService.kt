@@ -324,13 +324,13 @@ class NotificationService : Service() {
                     }
                 }
                 //stop
-//                .apply {
-//                    if (notificationSettings.stopEnabled) {
-//                        addAction(getStopIcon(context, action.notificationSettings.stopIcon), "Stop", PendingIntent.getBroadcast(context, 0,
-//                                createReturnIntent(forAction = NotificationAction.ACTION_STOP, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
-//                        )
-//                    }
-//                }
+                .apply {
+                    if (notificationSettings.stopEnabled) {
+                        addAction(getStopIcon(context, action.notificationSettings.stopIcon), "Stop", PendingIntent.getBroadcast(context, 0,
+                                createReturnIntent(forAction = NotificationAction.ACTION_STOP, forPlayer = action.playerId, audioMetas = action.audioMetas), FLAG_IMMUTABLE or FLAG_UPDATE_CURRENT)
+                        )
+                    }
+                }
                 .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                     .also {
                         // Log.d("NumberNotification",notificationSettings.numberEnabled().toString());
